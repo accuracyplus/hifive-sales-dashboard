@@ -56,6 +56,18 @@
 </head>
 <body class="bg-gray-50 min-h-screen max-w-lg mx-auto">
 
+  <!-- Test mode banner — visible only in test sessions -->
+<div id="test-banner" style="display:none;background:#BA7517;color:#fff;text-align:center;font-size:11px;font-weight:600;padding:6px;letter-spacing:0.05em;">
+  ⚡ TEST MODE — No real data will be written · <a href="index.html" style="color:#fff;text-decoration:underline;">Exit</a>
+</div>
+<script>
+  (function() {
+    const u = sessionStorage.getItem('hifive_user');
+    if (u && JSON.parse(u)._test_mode) {
+      document.getElementById('test-banner').style.display = 'block';
+    }
+  })();
+</script>
 <!-- ── TOP BAR ── -->
 <div class="bg-white border-b border-gray-100 px-5 pt-12 pb-4 sticky top-0 z-40">
   <div class="flex justify-between items-start">
