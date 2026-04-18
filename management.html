@@ -293,32 +293,8 @@ const MONTH = TODAY.substring(0, 7);
 const SLA = { Prospect: 14, Agreement: 21, Onboarding: 14 };
 
 // ── INIT ───────────────────────────────────────────────
-window.onload = function() {
-  if (sessionStorage.getItem('hifive_user')) {
-    window.location.href = 'dashboard.html';
-    return;
-  }
-
-  // Wait for GIS library to be ready before rendering button
-  function initGoogleSignIn() {
-    if (typeof google === 'undefined' || !google.accounts) {
-      setTimeout(initGoogleSignIn, 100);
-      return;
-    }
-    google.accounts.id.initialize({
-      client_id:   HIFIVE_CONFIG.CLIENT_ID,
-      callback:    handleCredentialResponse,
-      auto_select: false,
-    });
-    google.accounts.id.renderButton(
-      document.getElementById('sign-in-area'),
-      { theme: 'outline', size: 'large', width: 280, text: 'signin_with' }
-    );
-  }
-
-  initGoogleSignIn();
-};
-  const raw = sessionStorage.getItem('hifive_user');
+window.onload = async function () {
+    const raw = sessionStorage.getItem('hifive_user');
   if (!raw) { window.location.href = 'index.html'; return; }
   USER = JSON.parse(raw);
 
