@@ -78,7 +78,7 @@
 
       fetch(HIFIVE_CONFIG.API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action:   'LOGIN',
           id_token: response.credential,
