@@ -124,5 +124,61 @@
 
 <!-- GIS library loaded last — calls renderGoogleButton when ready -->
 <script src="https://accounts.google.com/gsi/client" onload="renderGoogleButton()"></script>
+<!-- TEST MODE — activated by pressing Shift+T+M together -->
+<div id="test-panel" style="display:none;position:fixed;bottom:20px;right:20px;background:#1A1916;border-radius:12px;padding:16px;width:240px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+  <p style="color:#5DCAA5;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">⚡ Test mode</p>
+  <select id="test-role" style="width:100%;padding:7px 10px;border-radius:7px;border:1px solid #3A3A35;background:#2C2C28;color:#F5F4F0;font-size:12px;margin-bottom:8px;">
+    <option value="admin|Both">Admin — Both entities</option>
+    <option value="management|Both">Management — Both entities</option>
+    <option value="bd_staff|APML">BD Staff — APML</option>
+    <option value="bd_staff|Atomic">BD Staff — Atomic</option>
+    <option value="ops_staff|APML">Ops Staff — APML</option>
+    <option value="ops_staff|Atomic">Ops Staff — Atomic</option>
+  </select>
+  <button onclick="loginAsTestUser()" style="width:100%;padding:8px;border-radius:7px;border:none;background:#5DCAA5;color:#04342C;font-size:12px;font-weight:600;cursor:pointer;">Sign in as test user</button>
+  <button onclick="document.getElementById('test-panel').style.display='none'" style="width:100%;padding:6px;border-radius:7px;border:none;background:transparent;color:#6B6860;font-size:11px;cursor:pointer;margin-top:4px;">Close</button>
+</div>
+
+<script>
+  // Activate test panel with Shift+T then M within 1 second
+  let shiftTPressed = false;
+  document.addEventListener('keydown', function(e) {
+    if (e.shiftKey && e.key === 'T') {
+      shiftTPressed = true;
+      setTimeout(function() { shiftTPressed = false; }, 1000);
+    }
+    if (shiftTPressed && e.key === 'M') {
+      document.getElementById('test-panel').style.display =
+        document.getElementById('test-panel').style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  function loginAsTestUser() {
+    const val    = document.getElementById('test-role').value.split('|');
+    const role   = val[0];
+    const entity = val[1];
+
+    const roleLabels = {
+      admin:      'Administrator',
+      management: 'General Manager',
+      bd_staff:   'BD Executive',
+      ops_staff:  'Ops Coordinator',
+    };
+
+    const testUser = {
+      staff_id:    'TEST-001',
+      email:       'testmode@hifive.local',
+      full_name:   '[TEST] ' + roleLabels[role],
+      role:        role,
+      entity:      entity,
+      designation: roleLabels[role] + ' (Test)',
+      _test_mode:  true,
+    };
+
+    sessionStorage.setItem('hifive_user',  JSON.stringify(testUser));
+    sessionStorage.setItem('hifive_token', 'TEST_MODE_TOKEN');
+    window.location.href = 'dashboard.html';
+  }
+</script>
 </body>
 </html>
