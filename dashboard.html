@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <title>HiFive Sales Dashboard</title>
+  <title>HiFive Sales </title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="config.js"></script>
   <style>
@@ -343,11 +343,11 @@ window.onload = async function () {
   if (!raw) { window.location.href = 'index.html'; return; }
   USER = JSON.parse(raw);
 
-  // Redirect management/admin to full dashboard (Step 7)
+  // Redirect management/admin to full  (Step 7)
   // Remove this block once Step 7 is complete
-  // if (USER.role === 'management' || USER.role === 'admin') {
-  //   window.location.href = 'management.html'; return;
-  // }
+   if (USER.role === 'management' || USER.role === 'admin') {
+     window.location.href = 'management.html'; return;
+   }
 
   setupHeader();
   setupProfile();
