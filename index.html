@@ -90,6 +90,7 @@
           showError(data.error || 'Access denied. Contact your administrator.');
           return;
         }
+        sessionStorage.setItem('hifive_user',  JSON.stringify(data.user));
         sessionStorage.setItem('hifive_token', response.credential);
         window.location.href = 'dashboard.html';
       })
@@ -98,24 +99,26 @@
       });
     }
 
-    window.onload = function() {
-      // Already logged in — skip login page
+    // Called automatically by GIS library when ready
+    // (data-callback on the g_id_onload div below handles init)
+    function renderGoogleButton() {
       if (sessionStorage.getItem('hifive_user')) {
         window.location.href = 'dashboard.html';
         return;
       }
-
       google.accounts.id.initialize({
         client_id:   HIFIVE_CONFIG.CLIENT_ID,
         callback:    handleCredentialResponse,
         auto_select: false,
       });
-
       google.accounts.id.renderButton(
         document.getElementById('sign-in-area'),
         { theme: 'outline', size: 'large', width: 280, text: 'signin_with' }
       );
-    };
-  </script>
+    }
+</script>
+
+<!-- GIS library loaded last — calls renderGoogleButton when ready -->
+<script src="https://accounts.google.com/gsi/client" onload="renderGoogleButton()" async defer></script>
 </body>
 </html>
