@@ -328,7 +328,18 @@ window.onload = async function () {
 // ── API ────────────────────────────────────────────────
 async function api(action, extra) {
   const token = sessionStorage.getItem('hifive_token');
-  const body  = Object.assign({ action, id_token: token }, extra || {});
+  const raw   = sessionStorage.getItem('hifive_user');
+  const u     = raw ? JSON.parse(raw) : {};
+  const base  = { action: action, id_token: token };
+
+  // Pass test role/entity so Apps Script can build correct filtered session
+  if (u._test_mode) {
+    base.test_role     = u._test_role;
+    base.test_entity   = u._test_entity;
+    base.test_staff_id = u.staff_id;
+  }
+
+  const body = Object.assign(base, extra || {});
   const res   = await fetch(HIFIVE_CONFIG.API_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body),
