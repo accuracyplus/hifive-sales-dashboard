@@ -2,96 +2,782 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>HiFive Sales Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="config.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .progress-bar { transition: width 0.6s ease; }
+    .card { background: white; border-radius: 16px; border: 1px solid #E5E7EB; }
+    .stage-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .bottom-nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .form-input {
+      width: 100%; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid #E5E7EB; font-size: 14px;
+      background: #F9FAFB; color: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .form-input:focus { outline: none; border-color: #1D6B4F; background: white; }
+    .form-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 4px; display: block; }
+    select.form-input { appearance: none; }
+    .btn-primary {
+      background: #1D6B4F; color: white; border: none;
+      padding: 12px 20px; border-radius: 12px; font-size: 14px;
+      font-weight: 600; width: 100%; cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .btn-secondary {
+      background: #F3F4F6; color: #374151; border: none;
+      padding: 12px 20px; border-radius: 12px; font-size: 14px;
+      font-weight: 500; width: 100%; cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      z-index: 50; display: flex; align-items: flex-end;
+    }
+    .modal-sheet {
+      background: white; border-radius: 20px 20px 0 0;
+      width: 100%; padding: 20px; max-height: 90vh; overflow-y: auto;
+    }
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid #E5E7EB;
+      border-top-color: #1D6B4F; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
-<body class="min-h-screen bg-gray-50">
+<body class="bg-gray-50 min-h-screen max-w-lg mx-auto">
 
-  <!-- Top bar -->
-  <div class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-3">
-      <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-        <rect x="3" y="3" width="10" height="10" rx="2" fill="#1D6B4F"/>
-        <rect x="15" y="3" width="10" height="10" rx="2" fill="#2952A3"/>
-        <rect x="3" y="15" width="10" height="10" rx="2" fill="#5DCAA5" opacity="0.7"/>
-        <rect x="15" y="15" width="10" height="10" rx="2" fill="#5B8FE8" opacity="0.7"/>
-      </svg>
-      <span class="font-semibold text-gray-900">HiFive Sales Dashboard</span>
+<!-- ── TOP BAR ── -->
+<div class="bg-white border-b border-gray-100 px-5 pt-12 pb-4 sticky top-0 z-40">
+  <div class="flex justify-between items-start">
+    <div>
+      <p class="text-xs text-gray-400" id="greeting">Good morning,</p>
+      <h1 class="text-lg font-semibold text-gray-900" id="user-name">Loading...</h1>
+      <span id="entity-badge" class="inline-block mt-1 text-xs font-medium px-3 py-1 rounded-full"></span>
     </div>
-    <button onclick="logout()"
-            class="text-sm text-gray-400 hover:text-gray-700 transition-colors">
-      Sign out
-    </button>
+    <button onclick="logout()" class="text-xs text-gray-400 mt-1 pt-1">Sign out</button>
   </div>
+</div>
 
-  <!-- Body -->
-  <div class="flex items-center justify-center min-h-[85vh] px-4">
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 max-w-md w-full text-center">
+<!-- ── TAB CONTENTS ── -->
+<div class="pb-24 px-4 mt-4">
 
-      <!-- Auth success indicator -->
-      <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+  <!-- HOME TAB -->
+  <div id="tab-home" class="tab-content active fade-in">
+
+    <!-- Target progress -->
+    <div class="card p-4 mb-3" id="target-card">
+      <div class="flex justify-between items-center mb-3">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">My targets — <span id="target-month"></span></span>
+        <span class="spinner" id="target-spinner"></span>
+      </div>
+      <div id="target-body" class="space-y-3"></div>
+    </div>
+
+    <!-- Overdue follow-ups -->
+    <div id="overdue-card" class="hidden rounded-2xl p-4 mb-3 border" style="background:#FCEBEB;border-color:#F7C1C1;">
+      <div class="flex items-start gap-3">
+        <span class="text-lg mt-0.5">⚠</span>
+        <div>
+          <p class="text-sm font-semibold" style="color:#A32D2D;" id="overdue-title"></p>
+          <p class="text-xs mt-0.5" style="color:#A32D2D;opacity:0.8;" id="overdue-list"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent leads -->
+    <div class="card overflow-hidden mb-3">
+      <div class="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+        <span class="text-sm font-semibold text-gray-900">My pipeline</span>
+        <button onclick="switchTab('leads')" class="text-xs font-medium" style="color:#1D6B4F;">View all</button>
+      </div>
+      <div id="home-leads-list">
+        <div class="px-4 py-3 text-xs text-gray-400">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Quick log activity -->
+    <button onclick="openActivityModal()"
+            class="w-full card p-4 flex items-center gap-3 text-left mb-3 active:bg-gray-50">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
            style="background:#E8F5EE;">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-             stroke="#1D6B4F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D6B4F" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </div>
-
-      <h2 class="text-xl font-semibold text-gray-900 mb-1" id="welcome-name">Welcome</h2>
-      <p class="text-sm text-gray-400 mb-6" id="welcome-sub">Loading your details...</p>
-
-      <!-- User detail pills -->
-      <div class="flex flex-wrap justify-center gap-2 mb-8" id="user-pills"></div>
-
-      <!-- Status message -->
-      <div class="rounded-xl p-4 text-sm text-left leading-relaxed"
-           style="background:#F5F4F0;color:#6B6860;">
-        <p class="font-medium text-gray-700 mb-1">Login verified ✓</p>
-        <p>Authentication and Users sheet lookup completed successfully.
-           The full dashboard UI will be available once Steps 3–7 of the build are complete.</p>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Log an activity</p>
+        <p class="text-xs text-gray-400 mt-0.5">Visit, call, meeting, follow-up</p>
       </div>
+    </button>
+
+  </div>
+
+  <!-- LEADS TAB -->
+  <div id="tab-leads" class="tab-content fade-in">
+    <div class="flex justify-between items-center mb-3">
+      <span class="text-sm font-semibold text-gray-900">My leads</span>
+      <button onclick="openLeadModal(null)"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
+              style="background:#1D6B4F;">+ New lead</button>
+    </div>
+
+    <!-- Stage filter -->
+    <div class="flex gap-2 overflow-x-auto pb-1 mb-3 scrollbar-hide">
+      <button class="stage-filter-btn active-filter flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('all', this)">All</button>
+      <button class="stage-filter-btn flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('New', this)">New</button>
+      <button class="stage-filter-btn flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('Qualified', this)">Qualified</button>
+      <button class="stage-filter-btn flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('Proposal', this)">Proposal</button>
+      <button class="stage-filter-btn flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('Negotiation', this)">Negotiation</button>
+      <button class="stage-filter-btn flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 bg-white" onclick="filterLeads('Won', this)">Won</button>
+    </div>
+
+    <div id="leads-list" class="space-y-2">
+      <div class="text-xs text-gray-400 text-center py-6">Loading leads...</div>
     </div>
   </div>
 
-  <script>
-    function logout() {
-      sessionStorage.removeItem('hifive_user');
-      window.location.href = 'index.html';
+  <!-- ACTIVITY TAB -->
+  <div id="tab-activity" class="tab-content fade-in">
+    <div class="flex justify-between items-center mb-3">
+      <span class="text-sm font-semibold text-gray-900">Activity log</span>
+      <button onclick="openActivityModal()"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
+              style="background:#1D6B4F;">+ Log</button>
+    </div>
+    <div id="activity-list" class="space-y-2">
+      <div class="text-xs text-gray-400 text-center py-6">Loading activities...</div>
+    </div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div id="tab-profile" class="tab-content fade-in">
+    <div class="card p-5 mb-3">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-semibold flex-shrink-0"
+             style="background:linear-gradient(135deg,#5DCAA5,#1D6B4F);" id="profile-avatar"></div>
+        <div>
+          <p class="font-semibold text-gray-900 text-base" id="profile-name"></p>
+          <p class="text-sm text-gray-400" id="profile-designation"></p>
+        </div>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between py-2 border-t border-gray-100">
+          <span class="text-gray-500">Role</span>
+          <span class="font-medium text-gray-900" id="profile-role"></span>
+        </div>
+        <div class="flex justify-between py-2 border-t border-gray-100">
+          <span class="text-gray-500">Entity</span>
+          <span class="font-medium text-gray-900" id="profile-entity"></span>
+        </div>
+        <div class="flex justify-between py-2 border-t border-gray-100">
+          <span class="text-gray-500">Email</span>
+          <span class="font-medium text-gray-900 text-xs" id="profile-email"></span>
+        </div>
+      </div>
+    </div>
+    <button onclick="logout()" class="btn-secondary">Sign out</button>
+  </div>
+
+</div>
+
+<!-- ── BOTTOM NAV ── -->
+<div class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-100 flex z-40">
+  <button onclick="switchTab('home')"    class="bottom-nav-btn flex-1 flex flex-col items-center py-3 gap-1" id="nav-home">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span class="text-xs">Home</span>
+  </button>
+  <button onclick="switchTab('leads')"   class="bottom-nav-btn flex-1 flex flex-col items-center py-3 gap-1" id="nav-leads">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span class="text-xs">Leads</span>
+  </button>
+  <button onclick="switchTab('activity')" class="bottom-nav-btn flex-1 flex flex-col items-center py-3 gap-1" id="nav-activity">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="text-xs">Activity</span>
+  </button>
+  <button onclick="switchTab('profile')" class="bottom-nav-btn flex-1 flex flex-col items-center py-3 gap-1" id="nav-profile">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="text-xs">Profile</span>
+  </button>
+</div>
+
+<!-- ── LOG ACTIVITY MODAL ── -->
+<div id="activity-modal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="text-base font-semibold text-gray-900">Log activity</h3>
+      <button onclick="closeActivityModal()" class="text-gray-400 text-xl leading-none">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="form-label">Activity type *</label>
+        <select class="form-input" id="act-type">
+          <option value="">Select type</option>
+          <option>Visit</option><option>Call</option>
+          <option>Email</option><option>Meeting</option><option>Follow-up</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Date *</label>
+        <input type="date" class="form-input" id="act-date"/>
+      </div>
+      <div>
+        <label class="form-label">Account name *</label>
+        <input type="text" class="form-input" id="act-account" placeholder="Clinic / pharmacy name"/>
+      </div>
+      <div>
+        <label class="form-label">Link to lead (optional)</label>
+        <select class="form-input" id="act-lead-link">
+          <option value="">No linked lead</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Outcome</label>
+        <select class="form-input" id="act-outcome">
+          <option value="">Select outcome</option>
+          <option>Positive</option><option>Neutral</option>
+          <option>Negative</option><option>Deferred</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Duration (minutes)</label>
+        <input type="number" class="form-input" id="act-duration" placeholder="e.g. 30"/>
+      </div>
+      <div>
+        <label class="form-label">Notes</label>
+        <textarea class="form-input" id="act-notes" rows="3" placeholder="What happened?"></textarea>
+      </div>
+      <button onclick="submitActivity()" class="btn-primary" id="act-submit-btn">Save activity</button>
+      <button onclick="closeActivityModal()" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NEW / EDIT LEAD MODAL ── -->
+<div id="lead-modal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="text-base font-semibold text-gray-900" id="lead-modal-title">New lead</h3>
+      <button onclick="closeLeadModal()" class="text-gray-400 text-xl leading-none">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="form-label">Account name *</label>
+        <input type="text" class="form-input" id="lead-account" placeholder="Clinic / pharmacy name"/>
+      </div>
+      <div>
+        <label class="form-label">Account type *</label>
+        <select class="form-input" id="lead-account-type">
+          <option value="">Select type</option>
+          <option>Doctor</option><option>Clinic</option><option>Hospital</option>
+          <option>Pharmacy</option><option>Chain</option><option>Wholesaler</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Contact person</label>
+        <input type="text" class="form-input" id="lead-contact" placeholder="Dr. / Mr. / Ms."/>
+      </div>
+      <div>
+        <label class="form-label">Contact number</label>
+        <input type="tel" class="form-input" id="lead-phone" placeholder="+971 5X XXX XXXX"/>
+      </div>
+      <div>
+        <label class="form-label">Area *</label>
+        <select class="form-input" id="lead-area">
+          <option value="">Select area</option>
+          <option>Abu Dhabi</option><option>Al Ain</option><option>Dubai</option>
+          <option>Sharjah</option><option>Ajman</option><option>RAK</option>
+          <option>Fujairah</option><option>UAQ</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Lead source *</label>
+        <select class="form-input" id="lead-source">
+          <option value="">Select source</option>
+          <option>Cold visit</option><option>Referral</option>
+          <option>Campaign</option><option>Existing relationship</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Stage *</label>
+        <select class="form-input" id="lead-stage">
+          <option>New</option><option>Qualified</option><option>Proposal</option>
+          <option>Negotiation</option><option>Won</option><option>Lost</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Expected value (AED)</label>
+        <input type="number" class="form-input" id="lead-value" placeholder="0"/>
+      </div>
+      <div>
+        <label class="form-label">Next follow-up date</label>
+        <input type="date" class="form-input" id="lead-followup"/>
+      </div>
+      <div>
+        <label class="form-label">Remarks</label>
+        <textarea class="form-input" id="lead-remarks" rows="2"></textarea>
+      </div>
+      <button onclick="submitLead()" class="btn-primary" id="lead-submit-btn">Save lead</button>
+      <button onclick="closeLeadModal()" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let USER      = null;
+let ALL_LEADS = [];
+let EDIT_LEAD = null;
+const TODAY   = new Date().toISOString().split('T')[0];
+
+// ── INIT ───────────────────────────────────────────────
+window.onload = async function () {
+  const raw = sessionStorage.getItem('hifive_user');
+  if (!raw) { window.location.href = 'index.html'; return; }
+  USER = JSON.parse(raw);
+
+  // Redirect management/admin to full dashboard (Step 7)
+  // Remove this block once Step 7 is complete
+  // if (USER.role === 'management' || USER.role === 'admin') {
+  //   window.location.href = 'management.html'; return;
+  // }
+
+  setupHeader();
+  setupProfile();
+  await Promise.all([loadAchievement(), loadLeads(), loadActivities()]);
+};
+
+// ── HEADER ─────────────────────────────────────────────
+function setupHeader() {
+  const hr   = new Date().getHours();
+  const greet = hr < 12 ? 'Good morning,' : hr < 17 ? 'Good afternoon,' : 'Good evening,';
+  document.getElementById('greeting').textContent  = greet;
+  document.getElementById('user-name').textContent = USER.full_name || USER.email;
+
+  const badge = document.getElementById('entity-badge');
+  badge.textContent = '● ' + USER.entity + ' — ' + (USER.designation || USER.role);
+  if (USER.entity === 'APML') {
+    badge.style.cssText = 'background:#E8F5EE;color:#1D6B4F;';
+  } else if (USER.entity === 'Atomic') {
+    badge.style.cssText = 'background:#E6EEFB;color:#2952A3;';
+  } else {
+    badge.style.cssText = 'background:#F3F4F6;color:#374151;';
+  }
+}
+
+// ── PROFILE ────────────────────────────────────────────
+function setupProfile() {
+  const initials = (USER.full_name || 'U').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('profile-avatar').textContent      = initials;
+  document.getElementById('profile-name').textContent        = USER.full_name || '';
+  document.getElementById('profile-designation').textContent = USER.designation || '';
+  document.getElementById('profile-role').textContent        = USER.role;
+  document.getElementById('profile-entity').textContent      = USER.entity;
+  document.getElementById('profile-email').textContent       = USER.email;
+}
+
+// ── API CALL ───────────────────────────────────────────
+async function api(action, extra) {
+  const token = sessionStorage.getItem('hifive_token');
+  const body  = Object.assign({ action: action, id_token: token }, extra || {});
+  const res   = await fetch(HIFIVE_CONFIG.API_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify(body),
+  });
+  return res.json();
+}
+
+// ── ACHIEVEMENT / TARGETS ──────────────────────────────
+async function loadAchievement() {
+  const month = TODAY.substring(0, 7);
+  document.getElementById('target-month').textContent = month;
+
+  try {
+    const data = await api('GET_ACHIEVEMENT', {
+      staff_id:     USER.staff_id,
+      period_month: month,
+    });
+
+    document.getElementById('target-spinner').style.display = 'none';
+
+    if (!data.success) {
+      document.getElementById('target-body').innerHTML =
+        '<p class="text-xs text-gray-400">No targets set for this month.</p>';
+      return;
     }
 
-    window.onload = function() {
-      const raw = sessionStorage.getItem('hifive_user');
-      if (!raw) {
-        window.location.href = 'index.html';
-        return;
-      }
+    const a = data.achievement;
+    document.getElementById('target-body').innerHTML = `
+      ${progressRow('Revenue (AED)', a.revenue.actual.toLocaleString(), a.revenue.target.toLocaleString(), a.revenue.pct, '#1D6B4F')}
+      ${progressRow('Field visits',  a.visits.actual,  a.visits.target,  a.visits.pct,  '#2952A3')}
+      ${progressRow('Calls',         a.calls.actual,   a.calls.target,   a.calls.pct,   '#BA7517')}
+    `;
+  } catch(e) {
+    document.getElementById('target-spinner').style.display = 'none';
+    document.getElementById('target-body').innerHTML =
+      '<p class="text-xs text-gray-400">Could not load targets.</p>';
+  }
+}
 
-      const user = JSON.parse(raw);
+function progressRow(label, actual, target, pct, color) {
+  const safePct = Math.min(pct, 100);
+  return `
+    <div>
+      <div class="flex justify-between mb-1">
+        <span class="text-xs text-gray-500">${label}</span>
+        <span class="text-xs font-semibold text-gray-900">${actual} / ${target}</span>
+      </div>
+      <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-full rounded-full progress-bar" style="width:${safePct}%;background:${color};"></div>
+      </div>
+    </div>`;
+}
 
-      document.getElementById('welcome-name').textContent =
-        'Welcome, ' + (user.full_name || user.email);
+// ── LEADS ──────────────────────────────────────────────
+async function loadLeads() {
+  try {
+    const data = await api('GET_LEADS');
+    if (!data.success) return;
 
-      document.getElementById('welcome-sub').textContent =
-        user.designation || 'HiFive Holdings';
+    ALL_LEADS = data.leads || [];
 
-      const pills = [
-        { label: user.role,   bg: '#E8F5EE', color: '#1D6B4F' },
-        { label: user.entity, bg: '#E6EEFB', color: '#2952A3' },
-        { label: user.email,  bg: '#F5F4F0', color: '#6B6860' },
-      ];
+    renderHomeLeads();
+    renderLeadsList('all');
+    checkOverdue();
 
-      const container = document.getElementById('user-pills');
-      pills.forEach(function(p) {
-        const span = document.createElement('span');
-        span.textContent = p.label;
-        span.style.cssText =
-          'font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;' +
-          'background:' + p.bg + ';color:' + p.color + ';';
-        container.appendChild(span);
-      });
-    };
-  </script>
+    // Populate lead dropdown in activity modal
+    const sel = document.getElementById('act-lead-link');
+    ALL_LEADS.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.lead_id;
+      opt.textContent = l.lead_id + ' — ' + l.account_name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('Leads load error', e); }
+}
+
+function renderHomeLeads() {
+  const recent = ALL_LEADS.filter(l => l.stage !== 'Won' && l.stage !== 'Lost').slice(0, 4);
+  const container = document.getElementById('home-leads-list');
+  if (!recent.length) {
+    container.innerHTML = '<p class="text-xs text-gray-400 px-4 py-3">No active leads. Tap + New lead to start.</p>';
+    return;
+  }
+  container.innerHTML = recent.map(leadRow).join('');
+}
+
+function renderLeadsList(stageFilter) {
+  const filtered = stageFilter === 'all'
+    ? ALL_LEADS
+    : ALL_LEADS.filter(l => l.stage === stageFilter);
+
+  const container = document.getElementById('leads-list');
+  if (!filtered.length) {
+    container.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">No leads in this stage.</p>';
+    return;
+  }
+  container.innerHTML = filtered.map(l => `
+    <div class="card p-4 active:bg-gray-50" onclick="openLeadModal('${l.lead_id}')">
+      <div class="flex justify-between items-start gap-2">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-gray-900 truncate">${l.account_name}</p>
+          <p class="text-xs text-gray-400 mt-0.5">${l.contact_person || '—'} · ${l.area || ''}</p>
+          ${l.next_followup_date ? `<p class="text-xs mt-1" style="color:${isOverdue(l.next_followup_date)?'#A32D2D':'#6B7280'};">Follow-up: ${l.next_followup_date}</p>` : ''}
+        </div>
+        <span class="stage-badge flex-shrink-0 ${stageBadgeClass(l.stage)}">${l.stage}</span>
+      </div>
+      ${l.expected_value_aed ? `<p class="text-xs font-semibold mt-2" style="color:#1D6B4F;">AED ${parseFloat(l.expected_value_aed).toLocaleString()}</p>` : ''}
+    </div>`).join('');
+}
+
+function leadRow(l) {
+  return `
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0 active:bg-gray-50"
+         onclick="openLeadModal('${l.lead_id}')">
+      <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${stageColor(l.stage)};"></div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-gray-900 truncate">${l.account_name}</p>
+        <p class="text-xs text-gray-400">${l.contact_person || ''}</p>
+      </div>
+      <span class="stage-badge ${stageBadgeClass(l.stage)}">${l.stage}</span>
+    </div>`;
+}
+
+function checkOverdue() {
+  const overdue = ALL_LEADS.filter(l =>
+    l.next_followup_date && isOverdue(l.next_followup_date) &&
+    l.stage !== 'Won' && l.stage !== 'Lost'
+  );
+  if (overdue.length) {
+    document.getElementById('overdue-card').classList.remove('hidden');
+    document.getElementById('overdue-title').textContent =
+      overdue.length + ' follow-up' + (overdue.length > 1 ? 's' : '') + ' overdue';
+    document.getElementById('overdue-list').textContent =
+      overdue.map(l => l.account_name).join(' · ');
+  }
+}
+
+function isOverdue(dateStr) {
+  return dateStr && dateStr < TODAY;
+}
+
+function filterLeads(stage, btn) {
+  document.querySelectorAll('.stage-filter-btn').forEach(b => {
+    b.classList.remove('active-filter');
+    b.style.cssText = '';
+  });
+  btn.classList.add('active-filter');
+  btn.style.background = '#E8F5EE';
+  btn.style.color      = '#1D6B4F';
+  btn.style.borderColor = '#A0D4BB';
+  renderLeadsList(stage);
+}
+
+// ── ACTIVITIES ─────────────────────────────────────────
+async function loadActivities() {
+  try {
+    const data = await api('GET_ACTIVITIES');
+    if (!data.success) return;
+
+    const acts = (data.activities || []).sort((a, b) =>
+      new Date(b.logged_at) - new Date(a.logged_at));
+
+    const container = document.getElementById('activity-list');
+    if (!acts.length) {
+      container.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">No activities logged yet.</p>';
+      return;
+    }
+
+    const grouped = {};
+    acts.forEach(a => {
+      const d = String(a.activity_date).split('T')[0] || 'Unknown';
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(a);
+    });
+
+    container.innerHTML = Object.keys(grouped).sort((a,b) => b.localeCompare(a)).map(date => `
+      <div>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-3">${formatDate(date)}</p>
+        ${grouped[date].map(a => `
+          <div class="card p-3 mb-2 flex gap-3">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+                 style="background:${activityBg(a.activity_type)};">
+              ${activityIcon(a.activity_type)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide" style="color:#6B7280;">${a.activity_type}</span>
+                <span class="text-xs text-gray-400">${formatTime(a.logged_at)}</span>
+              </div>
+              <p class="text-sm font-medium text-gray-900 truncate">${a.account_name || a.linked_lead_id || '—'}</p>
+              ${a.outcome ? `<p class="text-xs text-gray-400 mt-0.5">Outcome: ${a.outcome}${a.duration_minutes ? ' · ' + a.duration_minutes + ' min' : ''}</p>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+  } catch(e) { console.error('Activities load error', e); }
+}
+
+// ── MODALS ─────────────────────────────────────────────
+function openActivityModal() {
+  document.getElementById('act-date').value = TODAY;
+  document.getElementById('activity-modal').classList.remove('hidden');
+}
+function closeActivityModal() {
+  document.getElementById('activity-modal').classList.add('hidden');
+  ['act-type','act-account','act-outcome','act-duration','act-notes']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+}
+
+async function submitActivity() {
+  const type    = document.getElementById('act-type').value;
+  const date    = document.getElementById('act-date').value;
+  const account = document.getElementById('act-account').value.trim();
+
+  if (!type || !date || !account) {
+    alert('Please fill in activity type, date, and account name.');
+    return;
+  }
+
+  const btn = document.getElementById('act-submit-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  try {
+    const result = await api('CREATE_ACTIVITY', {
+      activity_type:    type,
+      activity_date:    date,
+      entity:           USER.entity,
+      account_name:     account,
+      linked_lead_id:   document.getElementById('act-lead-link').value || '',
+      outcome:          document.getElementById('act-outcome').value,
+      duration_minutes: document.getElementById('act-duration').value || '',
+      notes:            document.getElementById('act-notes').value,
+    });
+
+    if (result.success) {
+      closeActivityModal();
+      await loadActivities();
+      await loadAchievement();
+      switchTab('activity');
+    } else {
+      alert('Error: ' + result.error);
+    }
+  } catch(e) {
+    alert('Connection error. Please try again.');
+  } finally {
+    btn.textContent = 'Save activity'; btn.disabled = false;
+  }
+}
+
+function openLeadModal(leadId) {
+  EDIT_LEAD = leadId ? ALL_LEADS.find(l => l.lead_id === leadId) : null;
+  document.getElementById('lead-modal-title').textContent = EDIT_LEAD ? 'Edit lead' : 'New lead';
+
+  if (EDIT_LEAD) {
+    document.getElementById('lead-account').value       = EDIT_LEAD.account_name || '';
+    document.getElementById('lead-account-type').value  = EDIT_LEAD.account_type || '';
+    document.getElementById('lead-contact').value       = EDIT_LEAD.contact_person || '';
+    document.getElementById('lead-phone').value         = EDIT_LEAD.contact_number || '';
+    document.getElementById('lead-area').value          = EDIT_LEAD.area || '';
+    document.getElementById('lead-source').value        = EDIT_LEAD.lead_source || '';
+    document.getElementById('lead-stage').value         = EDIT_LEAD.stage || 'New';
+    document.getElementById('lead-value').value         = EDIT_LEAD.expected_value_aed || '';
+    document.getElementById('lead-followup').value      = EDIT_LEAD.next_followup_date || '';
+    document.getElementById('lead-remarks').value       = EDIT_LEAD.remarks || '';
+  } else {
+    ['lead-account','lead-account-type','lead-contact','lead-phone',
+     'lead-area','lead-source','lead-value','lead-followup','lead-remarks']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('lead-stage').value = 'New';
+  }
+
+  document.getElementById('lead-modal').classList.remove('hidden');
+}
+function closeLeadModal() {
+  document.getElementById('lead-modal').classList.add('hidden');
+  EDIT_LEAD = null;
+}
+
+async function submitLead() {
+  const account = document.getElementById('lead-account').value.trim();
+  const type    = document.getElementById('lead-account-type').value;
+  const area    = document.getElementById('lead-area').value;
+  const source  = document.getElementById('lead-source').value;
+  const stage   = document.getElementById('lead-stage').value;
+
+  if (!account || !type || !area || !source) {
+    alert('Please fill in all required fields (marked *).');
+    return;
+  }
+
+  const btn = document.getElementById('lead-submit-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  const payload = {
+    account_name:       account,
+    account_type:       type,
+    contact_person:     document.getElementById('lead-contact').value,
+    contact_number:     document.getElementById('lead-phone').value,
+    area:               area,
+    lead_source:        source,
+    stage:              stage,
+    entity:             USER.entity,
+    expected_value_aed: document.getElementById('lead-value').value || 0,
+    next_followup_date: document.getElementById('lead-followup').value,
+    remarks:            document.getElementById('lead-remarks').value,
+  };
+
+  try {
+    let result;
+    if (EDIT_LEAD) {
+      result = await api('UPDATE_LEAD', Object.assign({ lead_id: EDIT_LEAD.lead_id }, payload));
+    } else {
+      result = await api('CREATE_LEAD', payload);
+    }
+
+    if (result.success) {
+      closeLeadModal();
+      await loadLeads();
+      switchTab('leads');
+    } else {
+      alert('Error: ' + result.error);
+    }
+  } catch(e) {
+    alert('Connection error. Please try again.');
+  } finally {
+    btn.textContent = 'Save lead'; btn.disabled = false;
+  }
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-btn').forEach(el => {
+    el.style.color = '#9CA3AF';
+  });
+  document.getElementById('tab-' + tab).classList.add('active');
+  const navEl = document.getElementById('nav-' + tab);
+  if (navEl) navEl.style.color = '#1D6B4F';
+}
+
+// ── UTILITIES ──────────────────────────────────────────
+function stageBadgeClass(stage) {
+  const map = {
+    New: 'bg-gray-100 text-gray-600',
+    Qualified: 'text-white',
+    Proposal: 'text-white',
+    Negotiation: 'text-white',
+    Won: 'text-white',
+    Lost: 'text-white',
+  };
+  return map[stage] || 'bg-gray-100 text-gray-600';
+}
+
+function stageColor(stage) {
+  const map = {
+    New: '#9CA3AF', Qualified: '#1D6B4F', Proposal: '#BA7517',
+    Negotiation: '#2952A3', Won: '#3B6D11', Lost: '#A32D2D',
+  };
+  return map[stage] || '#9CA3AF';
+}
+
+function activityBg(type) {
+  const map = { Visit: '#E8F5EE', Call: '#FEF3DC', Meeting: '#E6EEFB', 'Follow-up': '#F3F4F6', Email: '#F3F4F6' };
+  return map[type] || '#F3F4F6';
+}
+
+function activityIcon(type) {
+  const map = { Visit: '🚗', Call: '📞', Meeting: '🤝', 'Follow-up': '🔁', Email: '✉️' };
+  return map[type] || '📋';
+}
+
+function formatDate(d) {
+  if (!d || d === 'Unknown') return 'Unknown date';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-AE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  try {
+    return new Date(ts).toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit' });
+  } catch(e) { return ''; }
+}
+
+function logout() {
+  sessionStorage.clear();
+  window.location.href = 'index.html';
+}
+
+// Set initial nav color
+document.getElementById('nav-home').style.color = '#1D6B4F';
+</script>
 </body>
 </html>
