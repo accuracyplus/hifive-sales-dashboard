@@ -166,13 +166,15 @@
     };
 
     const testUser = {
-      staff_id:    'TEST-001',
-      email:       'testmode@hifive.local',
-      full_name:   '[TEST] ' + roleLabels[role],
-      role:        role,
-      entity:      entity,
-      designation: roleLabels[role] + ' (Test)',
-      _test_mode:  true,
+      staff_id:       'ST-001',
+      email:          'testmode@hifive.local',
+      full_name:      '[TEST] ' + roleLabels[role],
+      role:           role,
+      entity:         entity,
+      designation:    roleLabels[role] + ' (Test)',
+      _test_mode:     true,
+      _test_role:     role,
+      _test_entity:   entity,
     };
 
     sessionStorage.setItem('hifive_user',  JSON.stringify(testUser));
