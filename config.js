@@ -1,4 +1,12 @@
-const HIFIVE_CONFIG = {
-  CLIENT_ID: '829950296489-rdaoraktfujf4fkgkpn6ag79dsdml18j.apps.googleusercontent.com',
-  API_URL:   'https://script.google.com/macros/s/AKfycbxZ-WJxZRjelokix-1XWp2WHJgMs-CIHx3n4tLrgMCdQDPksPUqq8keAYqRLfROSCKf5g/exec',
-};
+function respond(payload, statusCode) {
+  payload._status = statusCode;
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doOptions(e) {
+  return ContentService
+    .createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
