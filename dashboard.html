@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HiFive Sales Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+
+  <!-- Top bar -->
+  <div class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-3">
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+        <rect x="3" y="3" width="10" height="10" rx="2" fill="#1D6B4F"/>
+        <rect x="15" y="3" width="10" height="10" rx="2" fill="#2952A3"/>
+        <rect x="3" y="15" width="10" height="10" rx="2" fill="#5DCAA5" opacity="0.7"/>
+        <rect x="15" y="15" width="10" height="10" rx="2" fill="#5B8FE8" opacity="0.7"/>
+      </svg>
+      <span class="font-semibold text-gray-900">HiFive Sales Dashboard</span>
+    </div>
+    <button onclick="logout()"
+            class="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+      Sign out
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="flex items-center justify-center min-h-[85vh] px-4">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 max-w-md w-full text-center">
+
+      <!-- Auth success indicator -->
+      <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+           style="background:#E8F5EE;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+             stroke="#1D6B4F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+
+      <h2 class="text-xl font-semibold text-gray-900 mb-1" id="welcome-name">Welcome</h2>
+      <p class="text-sm text-gray-400 mb-6" id="welcome-sub">Loading your details...</p>
+
+      <!-- User detail pills -->
+      <div class="flex flex-wrap justify-center gap-2 mb-8" id="user-pills"></div>
+
+      <!-- Status message -->
+      <div class="rounded-xl p-4 text-sm text-left leading-relaxed"
+           style="background:#F5F4F0;color:#6B6860;">
+        <p class="font-medium text-gray-700 mb-1">Login verified ✓</p>
+        <p>Authentication and Users sheet lookup completed successfully.
+           The full dashboard UI will be available once Steps 3–7 of the build are complete.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function logout() {
+      sessionStorage.removeItem('hifive_user');
+      window.location.href = 'index.html';
+    }
+
+    window.onload = function() {
+      const raw = sessionStorage.getItem('hifive_user');
+      if (!raw) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      const user = JSON.parse(raw);
+
+      document.getElementById('welcome-name').textContent =
+        'Welcome, ' + (user.full_name || user.email);
+
+      document.getElementById('welcome-sub').textContent =
+        user.designation || 'HiFive Holdings';
+
+      const pills = [
+        { label: user.role,   bg: '#E8F5EE', color: '#1D6B4F' },
+        { label: user.entity, bg: '#E6EEFB', color: '#2952A3' },
+        { label: user.email,  bg: '#F5F4F0', color: '#6B6860' },
+      ];
+
+      const container = document.getElementById('user-pills');
+      pills.forEach(function(p) {
+        const span = document.createElement('span');
+        span.textContent = p.label;
+        span.style.cssText =
+          'font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;' +
+          'background:' + p.bg + ';color:' + p.color + ';';
+        container.appendChild(span);
+      });
+    };
+  </script>
+</body>
+</html>
