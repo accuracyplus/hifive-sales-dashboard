@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HiFive Sales Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="config.js"></script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .google-btn-wrap { display: flex; justify-content: center; }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center px-4">
 
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+
+    <!-- Logo -->
+    <div class="flex justify-center mb-6">
+      <div class="w-14 h-14 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center bg-white">
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+          <rect x="3" y="3" width="10" height="10" rx="2" fill="#1D6B4F"/>
+          <rect x="15" y="3" width="10" height="10" rx="2" fill="#2952A3"/>
+          <rect x="3" y="15" width="10" height="10" rx="2" fill="#5DCAA5" opacity="0.7"/>
+          <rect x="15" y="15" width="10" height="10" rx="2" fill="#5B8FE8" opacity="0.7"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="text-center mb-6">
+      <h1 class="text-xl font-semibold text-gray-900">HiFive Sales Dashboard</h1>
+      <p class="text-sm text-gray-400 mt-1">Sales & Business Development Monitoring</p>
+    </div>
+
+    <!-- Entity tags -->
+    <div class="flex justify-center gap-2 mb-8">
+      <span class="text-xs font-medium px-3 py-1 rounded-full border"
+            style="background:#E8F5EE;color:#1D6B4F;border-color:#A0D4BB;">APML</span>
+      <span class="text-xs font-medium px-3 py-1 rounded-full border"
+            style="background:#E6EEFB;color:#2952A3;border-color:#A0BFED;">Atomic Drugstore</span>
+    </div>
+
+    <!-- Google Sign-In button -->
+    <div id="sign-in-area" class="google-btn-wrap"></div>
+
+    <!-- Messages -->
+    <p id="loading-msg" class="hidden mt-4 text-sm text-gray-400 text-center">
+      Verifying access...
+    </p>
+    <div id="error-box" class="hidden mt-4 rounded-lg p-3 text-sm text-center"
+         style="background:#FCEBEB;color:#A32D2D;">
+      <span id="error-msg"></span>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-xs text-gray-400 text-center mt-8 leading-relaxed">
+      Access restricted to authorised staff only.<br/>
+      Contact <a href="mailto:sinu.sureshan@hifiveholdings.com"
+                 class="underline" style="color:#1D6B4F;">sinu.sureshan@hifiveholdings.com</a>
+      for access issues.
+    </p>
+  </div>
+
+  <script>
+    function showError(msg) {
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-box').classList.remove('hidden');
+      document.getElementById('loading-msg').classList.add('hidden');
+      document.getElementById('sign-in-area').classList.remove('hidden');
+    }
+
+    function handleCredentialResponse(response) {
+      document.getElementById('sign-in-area').classList.add('hidden');
+      document.getElementById('error-box').classList.add('hidden');
+      document.getElementById('loading-msg').classList.remove('hidden');
+
+      fetch(HIFIVE_CONFIG.API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action:   'LOGIN',
+          id_token: response.credential,
+        }),
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          showError(data.error || 'Access denied. Contact your administrator.');
+          return;
+        }
+        sessionStorage.setItem('hifive_user', JSON.stringify(data.user));
+        window.location.href = 'dashboard.html';
+      })
+      .catch(function() {
+        showError('Connection error. Please try again.');
+      });
+    }
+
+    window.onload = function() {
+      // Already logged in — skip login page
+      if (sessionStorage.getItem('hifive_user')) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      google.accounts.id.initialize({
+        client_id:   HIFIVE_CONFIG.CLIENT_ID,
+        callback:    handleCredentialResponse,
+        auto_select: false,
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById('sign-in-area'),
+        { theme: 'outline', size: 'large', width: 280, text: 'signin_with' }
+      );
+    };
+  </script>
+</body>
+</html>
