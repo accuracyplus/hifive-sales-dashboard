@@ -90,7 +90,7 @@
           showError(data.error || 'Access denied. Contact your administrator.');
           return;
         }
-        sessionStorage.setItem('hifive_user', JSON.stringify(data.user));
+        sessionStorage.setItem('hifive_token', response.credential);
         window.location.href = 'dashboard.html';
       })
       .catch(function() {
