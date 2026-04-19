@@ -78,6 +78,7 @@
 </div>
 
 <div class="flex flex-1 overflow-hidden">
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <!-- SIDEBAR -->
 <div class="w-52 bg-white border-r border-gray-100 flex flex-col flex-shrink-0 overflow-y-auto">
@@ -448,9 +449,9 @@ function renderDashboard() {
              style="background:#1D6B4F;">${(name||'?')[0]}</div>
         <span class="font-medium">${name}</span></div></td>
       <td>${entityBadge(s.entity)}</td>
-      <td>${s.leads}</td>
-      <td>${s.activities}</td>
-      <td><span class="badge" style="background:#EAF3DE;color:#3B6D11;">${s.won}</span></td>
+      <td><button onclick="openDrill('Leads','${id}','${name}')" style="font-weight:600;color:#2952A3;background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">${s.leads}</button></td>
+      <td><button onclick="openDrill('Activities','${id}','${name}')" style="font-weight:600;color:#2952A3;background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">${s.activities}</button></td>
+      <td><button onclick="openDrill('Won','${id}','${name}')" style="font-weight:600;background:none;border:none;cursor:pointer;font-size:13px;"><span class="badge" style="background:#EAF3DE;color:#3B6D11;text-decoration:underline;">${s.won}</span></button></td>
       <td class="font-mono text-xs">AED ${s.pipeline.toLocaleString()}</td>
     </tr>`;
   }).join('');
@@ -709,6 +710,123 @@ function logout() {
   sessionStorage.clear();
   window.location.href = 'index.html';
 }
+// ── SIDEBAR TOGGLE (mobile) ────────────────────────────
+function toggleSidebar() {
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  const isOpen   = sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('visible', !isOpen);
+}
+
+// Close sidebar when a nav item is tapped on mobile
+document.querySelectorAll('.sidebar-item').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (window.innerWidth <= 768) toggleSidebar();
+  });
+});
+// ── DRILL-DOWN MODAL ───────────────────────────────────
+function openDrill(type, staffId, staffName) {
+  const modal    = document.getElementById('drill-modal');
+  const title    = document.getElementById('drill-title');
+  const subtitle = document.getElementById('drill-subtitle');
+  const body     = document.getElementById('drill-body');
+
+  title.textContent    = staffName + ' — ' + type;
+  subtitle.textContent = '';
+  body.innerHTML       = '<p class="text-xs text-gray-400 text-center py-4">Loading...</p>';
+  modal.classList.remove('hidden');
+
+  if (type === 'Leads') {
+    const leads = ALL_LEADS.filter(l => l.staff_id === staffId);
+    subtitle.textContent = leads.length + ' lead' + (leads.length !== 1 ? 's' : '');
+    if (!leads.length) {
+      body.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No leads found.</p>';
+      return;
+    }
+    body.innerHTML = leads.map(l => `
+      <div style="background:#F9FAFB;border:1px solid #F3F4F6;border-radius:10px;padding:12px;">
+        <div class="flex justify-between items-start gap-2">
+          <div>
+            <p style="font-size:13px;font-weight:600;color:#111827;">${l.account_name}</p>
+            <p style="font-size:11px;color:#9CA3AF;margin-top:2px;">${l.contact_person||'—'} · ${l.area||''}</p>
+          </div>
+          <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;white-space:nowrap;background:${stageBg(l.stage)};color:${stageClr(l.stage)};">${l.stage}</span>
+        </div>
+        ${l.expected_value_aed ? `<p style="font-size:11px;font-weight:600;color:#1D6B4F;margin-top:6px;">AED ${parseFloat(l.expected_value_aed).toLocaleString()}</p>` : ''}
+        ${l.next_followup_date ? `<p style="font-size:10px;color:#9CA3AF;margin-top:2px;">Follow-up: ${l.next_followup_date}</p>` : ''}
+      </div>`).join('');
+  }
+
+  if (type === 'Activities') {
+    const acts = ALL_ACTIVITIES.filter(a => a.staff_id === staffId);
+    subtitle.textContent = acts.length + ' activit' + (acts.length !== 1 ? 'ies' : 'y');
+    if (!acts.length) {
+      body.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No activities found.</p>';
+      return;
+    }
+    body.innerHTML = acts.slice(0, 20).map(a => `
+      <div style="background:#F9FAFB;border:1px solid #F3F4F6;border-radius:10px;padding:12px;display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:32px;height:32px;border-radius:8px;background:#E8F5EE;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">
+          ${activityIcon(a.activity_type)}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.04em;">${a.activity_type}</p>
+          <p style="font-size:13px;font-weight:500;color:#111827;margin-top:1px;">${a.account_name||a.linked_lead_id||'—'}</p>
+          <p style="font-size:11px;color:#9CA3AF;margin-top:2px;">${a.outcome||''} ${a.activity_date ? '· ' + String(a.activity_date).split('T')[0] : ''}</p>
+        </div>
+      </div>`).join('');
+  }
+
+  if (type === 'Won') {
+    const won = ALL_LEADS.filter(l => l.staff_id === staffId && l.stage === 'Won');
+    subtitle.textContent = won.length + ' won lead' + (won.length !== 1 ? 's' : '');
+    if (!won.length) {
+      body.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No won leads yet.</p>';
+      return;
+    }
+    body.innerHTML = won.map(l => `
+      <div style="background:#EAF3DE;border:1px solid #C0DD97;border-radius:10px;padding:12px;">
+        <div class="flex justify-between items-start">
+          <div>
+            <p style="font-size:13px;font-weight:600;color:#111827;">${l.account_name}</p>
+            <p style="font-size:11px;color:#3B6D11;margin-top:2px;">${l.contact_person||'—'} · ${l.area||''}</p>
+          </div>
+          <p style="font-size:13px;font-weight:700;color:#1D6B4F;">AED ${parseFloat(l.actual_value_aed||l.expected_value_aed||0).toLocaleString()}</p>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function closeDrill() {
+  document.getElementById('drill-modal').classList.add('hidden');
+}
+
+function stageBg(s) {
+  const m = { New:'#F3F4F6', Qualified:'#E8F5EE', Proposal:'#FEF3DC', Negotiation:'#E6EEFB', Won:'#EAF3DE', Lost:'#FCEBEB' };
+  return m[s] || '#F3F4F6';
+}
+function stageClr(s) {
+  const m = { New:'#6B7280', Qualified:'#1D6B4F', Proposal:'#BA7517', Negotiation:'#2952A3', Won:'#3B6D11', Lost:'#A32D2D' };
+  return m[s] || '#6B7280';
+}
+function activityIcon(type) {
+  const m = { Visit:'🚗', Call:'📞', Meeting:'🤝', 'Follow-up':'🔁', Email:'✉️' };
+  return m[type] || '📋';
+}
 </script>
+<!-- DRILL-DOWN MODAL -->
+<div id="drill-modal" class="modal-bg hidden">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h3 class="text-base font-semibold text-gray-900" id="drill-title">Records</h3>
+        <p class="text-xs text-gray-400 mt-0.5" id="drill-subtitle"></p>
+      </div>
+      <button onclick="closeDrill()" class="text-gray-400 text-xl leading-none">✕</button>
+    </div>
+    <div id="drill-body" class="space-y-2 max-h-96 overflow-y-auto"></div>
+  </div>
+</div>
 </body>
 </html>
