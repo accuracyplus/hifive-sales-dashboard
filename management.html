@@ -34,6 +34,20 @@
     .kanban-col { flex:1; min-width:150px; padding:12px; border-right:1px solid #F3F4F6; }
     .kanban-col:last-child { border-right:none; }
     .kanban-chip { background:#F9FAFB; border:1px solid #F3F4F6; border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:11px; }
+  /* Mobile sidebar */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; left: -220px; top: 0; height: 100vh; z-index: 60; transition: left 0.25s ease; box-shadow: 4px 0 20px rgba(0,0,0,0.1); }
+  .sidebar.open { left: 0; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 55; }
+  .sidebar-overlay.visible { display: block; }
+  .main-content { width: 100%; }
+  .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  .hamburger-btn { display: flex !important; }
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 769px) {
+  .hamburger-btn { display: none !important; }
+}
   </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col">
